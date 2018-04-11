@@ -96,6 +96,7 @@ Minimum eight and maximum 10 characters, at least one uppercase letter, one lowe
       authType: { level: authType, grade: this.authLevel(authType) }
     }).save();
     const token = await user.generateAuthToken(ip, client, expires)
+    console.log('from UserAPI', {token});
     
     return {user};
   }

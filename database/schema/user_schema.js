@@ -174,6 +174,7 @@ schema.methods.generateAuthToken = function (ip, client, expires) {
     client: JSON.stringify(client),
     expires
   }, process.env.JWT_SECRET);
+  console.log('from user_schema', {token});
   // push Token with something into user Tokens Array
   user.tokens.push({access, token, expires});
 
