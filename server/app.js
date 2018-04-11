@@ -8,7 +8,7 @@ const _ = require('lodash');
 const PORT = process.env.PORT || 5000;
 
 const api = require('../database/UserAPI');
-const ClientIp = require('./middleware/userinfo');
+const ClientIp = require('./middleware/userInfo');
 const {ConvertUTCTimeToLocalTime} = require('./helper/timezone');
 const authentication = require('./middleware/authentication');
 

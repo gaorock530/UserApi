@@ -1,6 +1,4 @@
-var env = process.env.NODE_ENV || 'test';
-
-console.log(process.env.NODE_ENV);
+const env = process.env.NODE_ENV || 'test';
 
 if ( env === 'development' || env === 'test'){
   var config = require('./config.json');
@@ -9,3 +7,5 @@ if ( env === 'development' || env === 'test'){
     process.env[key] = envConfig[key];
   });
 }
+
+console.log('Environment: ' + env);
