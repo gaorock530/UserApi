@@ -4,12 +4,12 @@
     "MONGODB_URI": "mongodb://magic:123456@localhost:27017/magic",
     "JWT_SECRET": "magicwillgetturelovein2018",
     "passSalt": "magicwillbethebestin2020",
-    "EXPIRES_DAY": 7,
+    "EXPIRES_DAY": 7
   },
   "development": {
     "MONGODB_URI": "mongodb://magic:highonde@ds241489.mlab.com:41489/heroku_m7tv68vz",
     "JWT_SECRET": "magicwillgetturelovein2018",
     "passSalt": "magicwillbethebestin2020",
-    "EXPIRES_DAY": 7,
+    "EXPIRES_DAY": 7
   }
 }
