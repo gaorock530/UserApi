@@ -1,5 +1,6 @@
 const env = process.env.NODE_ENV || 'test';
-console.log(`'Environment: ' + env`);
+console.log('Environment: ' + env);
+console.log(process.env);
 
 if ( env === 'production' || env === 'test'){
   var config = require('./config.json');
