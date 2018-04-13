@@ -88,6 +88,7 @@ Minimum eight and maximum 10 characters, at least one uppercase letter, one lowe
     if (invaild.length > 0) return invaild;
     
     try{
+      console.log('registering ...');
       const user = await new userDatabase({
         username, 
         email, 
@@ -96,8 +97,11 @@ Minimum eight and maximum 10 characters, at least one uppercase letter, one lowe
         registerClient: client, 
         authType: { level: authType, grade: this.authLevel(authType) }
       }).save();
+      console.log('register success! generating token ...');
       const token = await user.generateAuthToken(ip, client, expires);
+      console.log('token: ' + token);
     }catch(e) {
+      console.log('error: ' + e);
       throw e;
     }
     //console.log('from UserAPI', {token});

@@ -23,7 +23,7 @@ const qualified = async (token, auth) => {
 const authtication = (options) => {
   return async (req, res, next) => {
     // console.log(req.headers.token);
-    console.log(req.path);
+    console.log('log from node: ' + req.path);
     try {
       const login = await isLogin(req.headers.token);
       if (!login) return res.send('Please login!');
