@@ -174,14 +174,16 @@ schema.methods.generateAuthToken = function (ip, client, expires) {
     client: JSON.stringify(client),
     expires
   }, process.env.JWT_SECRET);
-  console.log('from user_schema', {token});
+  // console.log('from user_schema', {token});
   // push Token with something into user Tokens Array
   user.tokens.push({access, token, expires});
 
   // save user
   return user.save().then(() => {
     return token
-  })
+  }).catch((e)=>{
+    return e
+  });
 }
 
 schema.methods.updateStatus = function (lebal, event, by) {
