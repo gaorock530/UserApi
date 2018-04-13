@@ -98,10 +98,9 @@ Minimum eight and maximum 10 characters, at least one uppercase letter, one lowe
       }).save();
       const token = await user.generateAuthToken(ip, client, expires);
     }catch(e) {
-      return e;
+      throw e;
     }
     //console.log('from UserAPI', {token});
-    
     return {user, token};
   }
 
