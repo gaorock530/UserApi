@@ -87,18 +87,22 @@ Minimum eight and maximum 10 characters, at least one uppercase letter, one lowe
     if (await this.check({phone})) invaild.push({'phone': 'in use'});
     if (invaild.length > 0) return invaild;
     
-    const user = await new userDatabase({
-      username, 
-      email, 
-      phone, 
-      password, 
-      registerClient: client, 
-      authType: { level: authType, grade: this.authLevel(authType) }
-    }).save();
-    const token = await user.generateAuthToken(ip, client, expires)
+    try{
+      const user = await new userDatabase({
+        username, 
+        email, 
+        phone, 
+        password, 
+        registerClient: client, 
+        authType: { level: authType, grade: this.authLevel(authType) }
+      }).save();
+      const token = await user.generateAuthToken(ip, client, expires);
+    }catch(e) {
+      return e;
+    }
     //console.log('from UserAPI', {token});
     
-    return {user};
+    return {user, token};
   }
 
   async findById (_id) {
