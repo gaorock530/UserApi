@@ -167,6 +167,8 @@ schema.methods.generateAuthToken = function (ip, client, expires) {
   let access = this.authType.grade;
   if (!ip || !client || !expires) throw 'Missing....';
   // encode information into a Json Web Token (JWT) 
+  console.log('process.env.JWT_SECRET: ' +process.env.JWT_SECRET);
+  console.log('begin generate Token via jwt ...');
   let token = jwt.sign({
     _id: user._id.toHexString(),
     access,
@@ -174,14 +176,17 @@ schema.methods.generateAuthToken = function (ip, client, expires) {
     client: JSON.stringify(client),
     expires
   }, process.env.JWT_SECRET);
+  console.log('Token done via jwt! Token: ' + token);
   // console.log('from user_schema', {token});
   // push Token with something into user Tokens Array
   user.tokens.push({access, token, expires});
-
+  console.log('token pushed!');
   // save user
   return user.save().then(() => {
+    console.log('token saved via generateAuthToken');
     return token
   }).catch((e)=>{
+    console.log('error via jwt: ', e);
     return e
   });
 }
