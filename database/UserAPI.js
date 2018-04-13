@@ -87,9 +87,11 @@ Minimum eight and maximum 10 characters, at least one uppercase letter, one lowe
     if (await this.check({phone})) invaild.push({'phone': 'in use'});
     if (invaild.length > 0) return invaild;
     
+    let user, token;
+
     try{
       console.log('registering ...');
-      const user = await new userDatabase({
+      user = await new userDatabase({
         username, 
         email, 
         phone, 
@@ -98,7 +100,7 @@ Minimum eight and maximum 10 characters, at least one uppercase letter, one lowe
         authType: { level: authType, grade: this.authLevel(authType) }
       }).save();
       console.log('register success! generating token ...');
-      const token = await user.generateAuthToken(ip, client, expires);
+      token = await user.generateAuthToken(ip, client, expires);
       console.log('token: ' + token);
     }catch(e) {
       console.log('error: ' + e);
