@@ -1,0 +1,1 @@
+module.exports = {code: 500, msg: 'Please contact ADMIN for checking {console.log} for more Information'}; 

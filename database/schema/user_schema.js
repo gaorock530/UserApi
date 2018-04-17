@@ -56,11 +56,11 @@ const schema = new mongoose.Schema({
   nameForCheck: {type: String},
   registedDate: {
     type: Date,
-    default: Date.now,
+    default: ConvertUTCTimeToLocalTime(true)
   },
   lastVisit: {
     type: Date,
-    default: Date.now
+    default: ConvertUTCTimeToLocalTime(true)
   },
   registerClient: {
     type: Object,
@@ -74,15 +74,15 @@ const schema = new mongoose.Schema({
     street: {type: String},
     detail: {type: String}
   },
-  status: [
+  activity: {type: String, default: 'active'}, //{active, inactive, frozen, banned}
+  records: [
     {
-      lebal: {
-        type: String, //{active, inactive, frozen, banned}
-        required: true
-      },
       event: {
         type: String, //{register, update, upgrade, downgrade, upSeller, downSeller}
         required: true
+      },
+      log: {
+        type: String
       },
       date: {
         type: Date,
@@ -184,10 +184,19 @@ schema.methods.generateAuthToken = function (ip, client, expires) {
   });
 }
 
-schema.methods.updateStatus = function (lebal, event, by) {
+schema.methods.removeToken = (token) => {
+  const user = this;
+  return user.update({
+    $pull: {
+      tokens: {token}
+    }
+  });
+}
+
+schema.methods.record = function (event, log, by) {
   let user = this;
-  user.status.push({lebal, event, date: ConvertUTCTimeToLocalTime(true), by});
-  return user.save();
+  user.records.push({event, log, date: ConvertUTCTimeToLocalTime(true), by});
+  return user.save().then().catch(e => console.log(e));
 }
 
 // Class method for decoding Token
@@ -218,14 +227,16 @@ schema.statics.findByToken = async function (token) {
     }
 }
 
+
+
 // Pre 'save' middleware
 schema.pre('save', function (next) {
-  var user = this;
+  console.log('pre save');
+  const user = this;
   // Capitalize username for checking unique
-  this.nameForCheck = this.username.toUpperCase();
+  user.nameForCheck = user.username.toUpperCase();
   // Capitalize email for checking unique
-  this.email = this.email.toUpperCase();
-
+  user.email = user.email.toUpperCase();
   // only save password when it's created or changed
   if (user.isModified('password')) {
     // hashing password using bcrypt with 10 rounds of salting (~10 hashes / sec)
@@ -240,6 +251,8 @@ schema.pre('save', function (next) {
     next();
   }
 });
+
+
 
 
 module.exports = schema;

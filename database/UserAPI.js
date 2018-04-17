@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const UserSchema = require('./schema/user_schema');
 const validator = require('validator');
 const bcrypt = require('bcryptjs');
+const _ = require('lodash');
 
 mongoose.connect(process.env.MONGODB_URI);
 
@@ -11,22 +12,15 @@ class User {
   constructor(userDatabase) {
     this.data = userDatabase;
   }
-/*  
-Minimum eight characters, at least one letter and one number:
-"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$"
 
-Minimum eight characters, at least one letter, one number and one special character:
-"^(?=.*[A-Za-z])(?=.*\d)(?=.*[$@$!%*#?&])[A-Za-z\d$@$!%*#?&]{8,}$"
+  static get allowedToModify () {
+    return ['username', 'password', 'address', 'email', 'phone', 'DOB']
+  }
 
-Minimum eight characters, at least one uppercase letter, one lowercase letter and one number:
-"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$"
+  static get allowedToDisplay () {
+    return ['username', 'address', 'email', 'phone', 'DOB']
+  }
 
-Minimum eight characters, at least one uppercase letter, one lowercase letter, one number and one special character:
-"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[$@$!%*?&])[A-Za-z\d$@$!%*?&]{8,}"
-
-Minimum eight and maximum 10 characters, at least one uppercase letter, one lowercase letter, one number and one special character:
-"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[$@$!%*?&])[A-Za-z\d$@$!%*?&]{8,10}"
-*/
   vaildPassword (password) {
     return password.match(/(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/g);
   }
@@ -37,15 +31,27 @@ Minimum eight and maximum 10 characters, at least one uppercase letter, one lowe
     return validator.isEmail(email.toString());
   }
   vaildUsername (name) {
-    return (name && typeof name === 'string' && name.length>=5);
+    return (name && typeof name === 'string' && name.match(/^(?!_)(?!.*?_$)[a-zA-Z0-9_\u4e00-\u9fa5]{6,16}$/g));
   }
 
   async check (prop) {
-    const res = await this.data.findOne(prop);
-    return res || false;
+    try {
+      return await userDatabase.findOne(prop);
+    }catch(e) {
+      throw e;
+    }
+  }
+
+  async checkPassword (user, password) {
+    try {
+      return await bcrypt.compare(password, user.password);
+    }catch(e) {
+      throw e;
+    }
   }
 
   authLevel (auth) {
+    auth = typeof auth === 'string'? auth.toUpperCase(): auth;
     switch (auth) {
       case 'OWNER': 
         return 5;
@@ -68,24 +74,25 @@ Minimum eight and maximum 10 characters, at least one uppercase letter, one lowe
       case 1:
         return 'SELF';
       default:
-        return false;
+        throw false;
     }
   }
 
+  
   async register (username, email, phone, password, ip, client, expires, authType) {
     let invaild = [];
     authType = authType || 'USER';
     // vaildate format
     if (!this.vaildEmail(email)) invaild.push({'email': 'example@world.com'});
     if (!this.vaildPhone(phone)) invaild.push({'phone': '13681221170'});
-    if (!this.vaildUsername(username)) invaild.push({'username': 'Minimum 5 characters'});
+    if (!this.vaildUsername(username)) invaild.push({'username': 'Minimum 6 characters'});
     if (!this.vaildPassword(password)) invaild.push({'password': 'Minimum 8 characters, at least one letter and one number'});
-    if (invaild.length > 0) return invaild;
+    if (invaild.length > 0) return {code: 405, invaild};
     // vaildate availability
     if (await this.check({nameForCheck: username.toUpperCase()})) invaild.push({'username': 'in use'});
     if (await this.check({email: email.toUpperCase()})) invaild.push({'email': 'in use'});
     if (await this.check({phone})) invaild.push({'phone': 'in use'});
-    if (invaild.length > 0) return invaild;
+    if (invaild.length > 0) return {code: 405, invaild};
     
     try{
       const user = await new userDatabase({
@@ -97,15 +104,18 @@ Minimum eight and maximum 10 characters, at least one uppercase letter, one lowe
         authType: { level: authType, grade: this.authLevel(authType) }
       }).save();
       const token = await user.generateAuthToken(ip, client, expires);
-      return {user, token};
+      return {
+        username: user.username,
+        token
+      };
     }catch(e) {
-      return e;
+      throw (e);
     }
   }
 
   async findById (_id) {
     try {
-      const user = await userDatabase.findOne({_id});
+      const user = await userDatabase.findById(_id);
       if (user) return user;
       return false;
     }catch(e){
@@ -125,19 +135,16 @@ Minimum eight and maximum 10 characters, at least one uppercase letter, one lowe
 
   async findByName (name) {
     try {
-      const user = await userDatabase.findOne({nameForCheck: name.toUpperCase()});
-      if (user) return user;
-      return false;
+      return await userDatabase.findOne({nameForCheck: name.toUpperCase()});
     }catch(e){
-      return e;
+      throw e;
     }
   }
 
   async fatch (obj) {
     obj = obj || {};
     try {
-      const data = await userDatabase.find(obj).sort({ 'authType.grade': -1 }).sort({ nameForCheck: 1 });
-      return data;
+      return await userDatabase.find(obj).sort({ 'authType.grade': -1 }).sort({ nameForCheck: 1 });
     }catch(e){
       return e
     }
@@ -145,27 +152,58 @@ Minimum eight and maximum 10 characters, at least one uppercase letter, one lowe
 
   async deleteOne (name) {
     try {
-      const res = await userDatabase.deleteOne({nameForCheck: name.toUpperCase()});
-      return res;
+      const cb = await userDatabase.deleteOne({nameForCheck: name.toUpperCase()});
+      return (cb.n === 1)? true: false;
     }catch(e){
-      return e
+      throw e
     }
   }
 
-  async updateAuth (_id, step, initial, by) {
-    const newLevel = this.authLevel(initial + step);
+  async updateAuth (_id, step, initialLevel, by) {
+    const newLevel = this.authLevel(initialLevel + step);
     try {
-      await userDatabase.findOne({_id}).update({ 
+      const update = await userDatabase.findOneAndUpdate({_id}, { 
         $inc: { 'authType.grade': step },
         $set: { 'authType.level': newLevel}
-      });
-      const user = await userDatabase.findOne({_id})
-      const cb = user.updateStatus('active', `change to ${newLevel}`, by);
-      return cb;
+      }, {new: true});
+      const user = await update.record('upgrade', `change to ${newLevel}`, by);
+      return user ? user.authType.level: false;
     }catch(e){
       return e
     }
   }
+
+  // TBC and fix
+  async updateProfile (_id, obj) {
+    if (!obj || typeof obj !=='object') throw ('2nd Argument must be a Object');
+    try {
+      const opts = _.pick(obj, User.allowedToModify);
+      if (_.has(opts, 'username')) opts.nameForCheck = opts.username.toUpperCase();
+      if (_.has(opts, 'email')) opts.email = opts.email.toUpperCase();
+      if (_.has(opts, 'password')) {
+        const salt = await bcrypt.genSalt(10);
+        // actual hashing 
+        const hash = await bcrypt.hash(opts.password, salt);
+        opts.password = hash;
+      }
+      const update = await userDatabase.findOneAndUpdate({_id}, opts, {new: true});
+      update.email = update.email.toLowerCase();
+      return _.pick(_.pick(update, User.allowedToDisplay), Object.keys(opts));
+    }catch(e) {
+      throw e;
+    }    
+  }
+
+  async logout(token) {
+    try {
+      const res = await userDatabase.removeToken(token);
+     return res;
+    }catch(e){
+      throw e;
+    }
+  }
+
+
 }
 
-module.exports = new User(userDatabase);
+module.exports = new User();

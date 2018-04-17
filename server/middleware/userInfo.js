@@ -1,11 +1,20 @@
 const useragent = require('useragent');
 
 var ClientInfo = (req, res, next) => {
-  
-  req.realIP = req.header('x-real-ip') || 'no proxy';
-  req.clientIP = req.header('x-forwarded-for') || req.connection.remoteAddress;
-  req.clientAgent = useragent.parse(req.headers['user-agent']);
+  const IP = req.header('x-real-ip') || 'no proxy';
+  const REMOTEIP = req.header('x-forwarded-for') || req.connection.remoteAddress;
+  const AGENT = useragent.parse(req.headers['user-agent']);
+
+  req.userInfo = {
+    IP: {
+      realIP: IP,
+      remoteIP: REMOTEIP
+    },
+    agent: AGENT
+  }
+
   res.setHeader('Server', 'MagicBox');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
   next();
 
   // //check if client broswer is IE and < 11
