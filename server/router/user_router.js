@@ -1,22 +1,21 @@
 const _ = require('lodash');
-const api = require('../../database/UserAPI');
+const api = require('../api/userAPI');
 const {ConvertUTCTimeToLocalTime} = require('../helper/timezone');
-const SERVER_ERROR = require('../const/server_error');
+const ERROR = require('../const/error');
 
 module.exports = (server, authentication) => {
   // get single userinfo {USER, ADMIN, SUPER, OWNER}
   server.get('/user/:username', authentication({auth: 'USER'}), async (req, res) => {
     try {
       const user = await api.findByName(req.params.username);
-      if (!user) return res.send({code: 404, msg: 'Not Found'}); 
-      if (req.access.grade > user.authType.grade || 
-          (req.access.grade === user.authType.grade && 
-          req.params.username.toUpperCase() === req.access.username.toUpperCase()))
-          res.send({code: 200, data: user}); 
-      else res.send({code: 401, msg: 'Over Looked!'});
+      if (!user) return res.status(404).send(ERROR(404)); 
+      if (req.user.auth.grade > user.auth.grade || 
+          req.params.username.toUpperCase() === req.user.nameForCheck)
+          res.status(200).send({data: user}); 
+      else res.status(401).send(ERROR(401));
     }catch(e) {
       console.log(e);
-      res.send(SERVER_ERROR);
+      res.status(403).send(ERROR(403));
     }
   });
 
@@ -27,141 +26,132 @@ module.exports = (server, authentication) => {
     try {
       if (req.query.type) {
         // if on some level get 'not authorized'
-        if (api.authLevel(req.query.type.toUpperCase()) >= req.access.grade) {
-          return res.send({code: 401, msg: 'NOT Authorized!', trace: 3});
+        if (api.authLevel(req.query.type.toUpperCase()) >= req.user.auth.grade) {
+          return res.status(401).send(ERROR(401));
         }else {
           // if fatcher level > type level
-          data = await api.fatch({ 'authType.level': req.query.type.toUpperCase(), 'authType.grade': {$lt: req.access.grade} });
-          if (!data) return res.send({code: 404, msg: 'No result!', trace: 'auth'});
+          data = await api.fatch({ 'auth.level': req.query.type.toUpperCase(), 'auth.grade': {$lt: req.user.auth.grade} });
         }
       // handle default '/users'
       }else {
-        data = await api.fatch({ 'authType.grade': {$lt: req.access.grade} });
-        if (!data) return res.send({code: 404, msg: 'No result!', trace: 'auth'});
+        data = await api.fatch({ 'auth.grade': {$lt: req.user.auth.grade} });
       }
-      res.send({code: 200, total: data.length, data});
+      // check if data has result
+      if (!data || data.length === 0) return res.status(404).send(ERROR(404));
+      res.status(200).send({total: data.length, data});
     }catch(e) {
       console.log(e);
-      res.send(SERVER_ERROR);
+      res.status(403).send(ERROR(403));
     }
   });
 
 
   // test data
   server.get('/test', (req, res) => {
-    const data = require('./helper/example');
+    // return res.status(200).send('ok');
+    const expires = ConvertUTCTimeToLocalTime(true, null, process.env.EXPIRES_DAY);
+    const data = require('../helper/example');
     const users = [];
     try {
-      data.map(async ({username, email, phone, password, ip, client, expires, authType}) => {
-        await api.register(username, email, phone, password, ip, client, expires, authType)
+      data.map(async ({username, email, phone, password, authType}) => {
+        let user = await api.register(username, email, phone, password, req.userInfo.IP, req.userInfo.agent, expires, authType)
+        console.log(user)
       });
-      res.send('ok')
+      res.status(200).send('ok')
     }catch(e) {
       console.log(e);
-      res.send(SERVER_ERROR);
+      res.status(403).send(ERROR(403));
     }
   });
 
   server.post('/register', async (req, res) => {
-    const {name, password, email, phone} = req.body;
-    if (!name || !password || !email || !phone) return res.send('missing info');
+    const registerObj = _.pick(req.body, api.allowedToModify);
+    if (!registerObj.username || !registerObj.password || !registerObj.email || !registerObj.phone) return res.status(400).send(ERROR(400));
     const expires = ConvertUTCTimeToLocalTime(true, null, process.env.EXPIRES_DAY);
     try {
-      const r = await api.register(name, email, phone, password, req.userInfo.IP, req.userInfo.agent, expires);
-      res.send(r);
+      const cb = await api.register(registerObj, req.userInfo.IP, req.userInfo.agent, expires);
+      res.status(cb.code).send(ERROR(cb.code, cb.msg));
     }catch(e) {
       console.log(e);
-      res.send(SERVER_ERROR);
+      res.status(403).send(ERROR(403));
     }
   });
 
   server.post('/login', async(req, res) => {
     //check if complete body
     const {loginString, password} = req.body;
-    if (!loginString || !password) return res.send({code: 500, msg: 'missing info'});
+    if (!loginString || !password) return res.status(400).send(ERROR(400));
     //check input type
-    let check = '';
+    let check;
     if (api.vaildEmail(loginString)) check = {'email': loginString.toUpperCase()};
     else if (api.vaildPhone(loginString)) check = {'phone' :loginString};
-    else if (api.vaildUsername(loginString)) check = {'username': loginString};
-    else return res.send('input not vaild!');
+    else if (api.vaildUsername(loginString)) check = {'nameForCheck': loginString.toUpperCase()};
+    else return res.status(400).send(ERROR(400, 'Input Not Vaild!'));
 
     try {
       const user = await api.check(check);
-      if (!user) return res.send({code: 404, msg: 'user not found'});
-      const isPasswordVaild = await api.checkPassword(user, password);
-      if (!isPasswordVaild) return res.send({code: 401, msg: 'password not correct'});
-      const token = await user.generateAuthToken(req.userInfo.IP, req.userInfo.agent, process.env.EXPIRES_DAY);
-      return res.send({
+      if (!user) return res.status(404).send(ERROR(404));
+      const isPasswordVaild = api.checkPassword(user, password);
+      if (!isPasswordVaild) return res.status(401).send(ERROR(401));
+      const expires = ConvertUTCTimeToLocalTime(true, null, process.env.EXPIRES_DAY);
+      const token = await user.generateAuthToken(req.userInfo.IP, req.userInfo.agent, expires);
+      return res.status(200).send({
         user: user.username,
         token
       });
     }catch(e) {
       console.log(e);
-      res.send(SERVER_ERROR);
+      res.status(403).send(ERROR(403));
     }
   });
 
   server.post('/logout', authentication({auth: 'SELF'}), async (req, res) => {
+    // return console.log(req.user, req.headers.token);
     try {
-      const token = await api.findByToken(req.headers.token);
-      // return console.log(req.headers.token);
-      if (!token) return res.send({code: 404, msg: 'Invaild token'});
-      const cb = await api.logout(req.header.token);
-      res.send(cb);
+      const cb = await req.user.removeToken(req.headers.token);
+      if (!cb) res.status(403).send(ERROR(403));
+      res.status(200).send(`${req.user.username} has logged out!`);
     }catch(e) {
       console.log(e);
-      res.send(SERVER_ERROR);
+      res.status(403).send(ERROR(403));
     }
-    
-
   })
 
-  //delete user
-  server.delete('/user/:username', authentication({auth: 'SUPER'}), async (req, res) => {
-    const username = req.params.username;
-    try {
-      const isDeleted = await api.deleteOne(username);
-      if(isDeleted) return res.send({code: 200, msg: `delete ${username} successfully!`});
-      res.send({code: 404, msg: `${username} not exist!`});
-    }catch(e){
-      console.log(e);
-      res.send(SERVER_ERROR);
-    }
-  });
 
   server.put('/update/auth', authentication({auth: 'SUPER'}), async (req, res) => {
-    const value = parseInt(req.body.value);
-    if (!req.body.name) return res.send('Please add \'?name=\' after url');
-    else if (!value || value !== -1 && value !== 1) return res.send('Please add \'?value=(1|-1)\' after url');
+    const value = parseInt(req.body.value) || 0;
+    if (!req.body.name) return res.status(400).send(ERROR(400, 'Please add \'?name=\' after url'));
+    else if (value !== -1 && value !== 1) return res.status(400).send(ERROR(400, 'Please add \'?value=(1|-1)\' after url'));
     else {
       try {
         const user = await api.findByName(req.body.name);
         if (!user) return res.send({code: 404, msg: 'user not found'});
-        if (req.access.grade > user.authType.grade && 
-            user.authType.grade + value >= 2 && 
-            user.authType.grade + value < req.access.grade) 
+        if (req.user.auth.grade > user.auth.grade && 
+            user.auth.grade + value >= 2 && 
+            user.auth.grade + value < req.user.auth.grade) 
         {
-          const updatedLevel = await api.updateAuth(user._id, value, user.authType.grade, req.access.username); 
-          if (updatedLevel) return res.send({code: 200, msg: `User: <${user.username}> is now at authLevel - {${updatedLevel}}`});
-        } else res.send({code: 401, msg: 'AuthLevel Exceeded!'});
+          const updatedLevel = await api.updateAuth(user._id, value, user.auth.grade, req.user._id); 
+          if (updatedLevel) return res.status(200).send({code: 200, msg: `User: <${user.username}> is now at authLevel - {${updatedLevel}}`});
+        } else res.status(406).send(ERROR(406, 'AuthLevel Exceeded!'));
       }catch(e) {
-        res.send(SERVER_ERROR);
+        console.log(e);
+        res.status(403).send(ERROR(403));
       } 
     }
   });
 
 
   server.put('/update/profile', authentication({auth: 'SELF'}), async (req, res) => {
-    const opts = _.pick(req.body, ['username', 'password', 'email', 'phone']);
-    if (Object.keys(opts).length === 0) res.send('bad request!');
+    const opts = _.pick(req.body, ['username', 'password', 'email', 'phone', 'pic']);
+    if (Object.keys(opts).length === 0) return res.status(400).send(ERROR(400));
     else {
       try{
-        const data = await api.updateProfile(req.access._id, opts);
-        res.send({code: 200, msg: 'profile updated!', data});
+        const cb = await api.updateProfile(req.user._id, opts);
+        if (cb.code !== 200) return res.status(cb.code).send(ERROR(cb.code, cb.msg))
+        res.status(200).send(`${Object.keys(cb.update)} has been modified successfully!`);
       }catch(e) {
         console.log(e);
-        res.send(SERVER_ERROR);
+        res.status(403).send(ERROR(403));
       }
     }
   });

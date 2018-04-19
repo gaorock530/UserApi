@@ -1,43 +1,31 @@
 
 module.exports = [
   {
-    username: 'owner', 
+    username: 'theowner', 
     email: 'gaorock530@hotmail.com', 
     phone: 13681221170, 
     password: 'asdaasdas112', 
-    ip: '192.168.0.1', 
-    client: 'ios', 
-    expires: 12313123, 
     authType: 'OWNER'
   },
   {
-    username: 'super', 
+    username: 'thesuper', 
     email: 'gaorock531@hotmail.com', 
     phone: 13681221171, 
     password: 'asdaasdas112', 
-    ip: '192.168.0.2', 
-    client: 'ios', 
-    expires: 123123123, 
     authType: 'SUPER'
   },
   {
-    username: 'admin', 
+    username: 'theadmin', 
     email: 'gaorock532@hotmail.com', 
     phone: 13681221172, 
     password: 'asdaasdas112', 
-    ip: '192.168.0.1', 
-    client: 'ios', 
-    expires: 123123123, 
     authType: 'ADMIN'
   },
   {
-    username: 'magic', 
+    username: 'magichead', 
     email: 'gaorock510@hotmail.com', 
     phone: 13681221120, 
     password: 'asdaasdas112', 
-    ip: '192.168.0.1', 
-    client: 'ios', 
-    expires: 123123123, 
     authType: 'USER'
   },
   {
@@ -45,9 +33,6 @@ module.exports = [
     email: 'gaorock520@hotmail.com', 
     phone: 13681221270, 
     password: 'asdaasdas112', 
-    ip: '192.168.0.1', 
-    client: 'ios', 
-    expires: 123123123, 
     authType: 'USER'
   }
 ];
