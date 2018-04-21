@@ -1,3 +1,5 @@
+'use strict';
+
 const {User} = require('../models/users');
 const {authLevel} = require('../api/userAPI');
 

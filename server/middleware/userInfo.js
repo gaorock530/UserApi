@@ -1,10 +1,11 @@
+'use strict';
+
 const useragent = require('useragent');
 
 var ClientInfo = (req, res, next) => {
   const IP = req.header('x-real-ip') || 'no proxy';
   const REMOTEIP = req.header('x-forwarded-for') || req.connection.remoteAddress;
   const AGENT = useragent.parse(req.headers['user-agent']);
-
   req.userInfo = {
     IP: {
       realIP: IP,
@@ -12,7 +13,6 @@ var ClientInfo = (req, res, next) => {
     },
     agent: AGENT
   }
-
   res.setHeader('Server', 'MagicBox');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   next();
