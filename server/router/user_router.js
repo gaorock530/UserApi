@@ -3,7 +3,16 @@ const api = require('../api/userAPI');
 const {ConvertUTCTimeToLocalTime} = require('../helper/timezone');
 const ERROR = require('../const/error');
 
+
+
+
 module.exports = (server, authentication) => {
+  /**
+   * -------------------------------------
+   * @description{Quary}
+   * -------------------------------------
+   */
+
   // get single userinfo {USER, ADMIN, SUPER, OWNER}
   server.get('/user/:username', authentication({auth: 'USER'}), async (req, res) => {
     try {
@@ -45,6 +54,11 @@ module.exports = (server, authentication) => {
     }
   });
 
+  /**
+   * -------------------------------------
+   * @description{Register}
+   * -------------------------------------
+   */
 
   // test data
   server.get('/test', (req, res) => {
@@ -77,6 +91,11 @@ module.exports = (server, authentication) => {
     }
   });
 
+  /**
+   * -------------------------------------
+   * @description{Login/out}
+   * -------------------------------------
+   */
   server.post('/login', async(req, res) => {
     //check if complete body
     const {loginString, password} = req.body;
@@ -117,7 +136,11 @@ module.exports = (server, authentication) => {
     }
   })
 
-
+  /**
+   * -------------------------------------
+   * @description{Update}
+   * -------------------------------------
+   */
   server.put('/update/auth', authentication({auth: 'SUPER'}), async (req, res) => {
     const value = parseInt(req.body.value) || 0;
     if (!req.body.name) return res.status(400).send(ERROR(400, 'Please add \'?name=\' after url'));
