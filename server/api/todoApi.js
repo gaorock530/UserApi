@@ -3,6 +3,7 @@ const validator = require('validator');
 const {Todo} = require('../models/todo');
 const bcrypt = require('bcryptjs');
 
+
 const allowedToDisplay = ['username', 'email'];
 const allowedToModify = ['username', 'password', 'email'];
 
@@ -159,14 +160,53 @@ async function updateProfile (_id, obj) {
   }    
 }
 
-async function updateTodos (_id, todos) {
+async function getTodolist (_id, title) {
+  try {
+    const list = Todo.find({
+      _id,
+      'todoList.title': title
+    });
+    console.log(list);
+  }catch(e) {
+    console.log(e);
+  }
+}
+
+async function createList (user, title) {
+  try {
+    // const user = await Todo.findById(_id);
+    const list = await user.createList(title);
+    return list
+  }catch(e) {
+    console.log(e);
+  }
+}
+
+//!!!!!!!!!!!!!!!!
+async function updateTodos (user, todoId, todoTitle, todos) {
   try {
     // validate user input
     if (!_.isArray(todos)) return {code: 406 ,msg:'[todos] must be a Array'};
-    // update user info
-    const update = await Todo.findOneAndUpdate({_id}, {todos}, {new: true});
 
-    return {code:200, update: update.todos};
+    // first remove old todolist
+    const update = await user.update({
+      $pull: { todoList: {id : todoId}} //Id = custom ID 
+    });
+
+    if (update.nModified === 0) throw 'Such todo list Not found!';
+    // then push new todo list with old title
+    const push = await user.update({
+      $push: { todoList: {
+        id: todoId,
+        title: todoTitle,
+        todos
+      }}
+    }, { new: true});
+    // if nModified = 1, modified successfully!
+    console.log('Modified: ' + push.nModified);
+    if (push.nModified === 0) throw 'Nothing modified!';
+
+    return push;
   }catch(e) {
     throw e;
   } 
@@ -182,5 +222,6 @@ module.exports = {
   fatch,
   findByName,
   checkPassword,
-  updateTodos
+  updateTodos,
+  createList
 }

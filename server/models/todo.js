@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const validator = require('validator');
 const {hex_md5} = require('../../server/helper/md5');
 const {b64_sha256} = require('../../server/helper/sha256');
+const uuid = require('uuid/v1');
 const _ = require('lodash');
 const {ConvertUTCTimeToLocalTime} = require('../../server/helper/timezone');
 
@@ -40,11 +41,18 @@ const schema = new mongoose.Schema({
     level: { type: String, default: 'USER' },
     grade: { type: Number, default: 2 }
   },
-  todos: [
+  todoList: [
     {
-      id: {type: String},
-      text: {type: String},
-      complete: {type: Boolean}
+      id: {type: String, default: uuid()},
+      title: {type: String},
+      todos: [
+        {
+          text: {type: String},
+          complete: {type: Boolean, default: false},
+          conpletedAt: {type: Date, default: Date.now()},
+          lock: {type: Boolean, default: false}
+        }
+      ] 
     }
   ],
   tokens: [
@@ -55,6 +63,27 @@ const schema = new mongoose.Schema({
     }
   ]
 }); 
+
+schema.methods.createList = function async (title) {
+  const user = this;
+  try {
+    user.todoList.push({
+      title,
+      todos: []
+    });
+  }catch(e) {
+    console.log(e);
+  }
+  
+  // save user
+  return user.save().then((todo) => {
+    return todo;
+  }).catch((e)=>{
+    console.log(e);
+    throw e
+  });
+}
+
 
 // Class method for generate Token
 schema.methods.generateAuthToken = function (ip, client, expires) {

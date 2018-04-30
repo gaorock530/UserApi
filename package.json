@@ -26,6 +26,7 @@
     "lodash": "^4.17.5",
     "mongoose": "^5.0.13",
     "useragent": "^2.3.0",
+    "uuid": "^3.2.1",
     "validator": "^9.4.1"
   },
   "devDependencies": {
