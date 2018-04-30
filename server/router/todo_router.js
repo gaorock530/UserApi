@@ -56,7 +56,7 @@ module.exports = (server, authentication) => {
       return res.status(200).send({
         username: user.username,
         token,
-        todos: user.todos
+        todoList: user.todoList
       });
     }catch(e) {
       console.log(e);

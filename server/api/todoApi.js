@@ -109,7 +109,7 @@ async function register (obj, ip, client, expires, authType) {
       msg: {
         username: user.username,
         token,
-        todos: user.todos,
+        todoList: user.todoList,
         expires: new Date(expires)
       }
     };
