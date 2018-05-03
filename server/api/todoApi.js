@@ -17,7 +17,7 @@ function vaildUsername (name) {
   return (name && typeof name === 'string' && name.match(/^(?!_)(?!.*?_$)[a-zA-Z0-9_\u4e00-\u9fa5]{5,16}$/g));
 }
 function authLevel (auth) {
-  auth = typeof auth === 'string'? auth.toUpperCase(): auth;
+  auth = (typeof auth === 'string')? auth.toUpperCase(): auth;
   switch (auth) {
     case 'OWNER': 
       return 5;
@@ -182,7 +182,7 @@ async function createList (user, title) {
   }
 }
 
-//!!!!!!!!!!!!!!!!
+// update Title and Todos
 async function updateTodos (user, todoId, todoTitle, todos) {
   try {
     // validate user input
@@ -212,6 +212,33 @@ async function updateTodos (user, todoId, todoTitle, todos) {
   } 
 }
 
+// just update Title
+async function updateListTitle (user, todoId, todoTitle) {
+  try {
+    // first remove old todolist
+    const update = await user.update({
+      $pull: { todoList: {id : todoId}} //Id = custom ID 
+    });
+
+    if (update.nModified === 0) throw 'Such todo list Not found!';
+    // then push new todo list with old title
+    const push = await user.update({
+      $push: { todoList: {
+        id: todoId,
+        title: todoTitle,
+        todos: []
+      }}
+    }, { new: true});
+    // if nModified = 1, modified successfully!
+    console.log('Modified: ' + push.nModified);
+    if (push.nModified === 0) throw 'Nothing modified!';
+
+    return push;
+  }catch(e) {
+    throw e;
+  } 
+}
+
 module.exports = {
   allowedToModify,
   check,
@@ -223,5 +250,6 @@ module.exports = {
   findByName,
   checkPassword,
   updateTodos,
-  createList
+  createList,
+  updateListTitle
 }

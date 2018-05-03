@@ -4,6 +4,10 @@ const {ConvertUTCTimeToLocalTime} = require('../helper/timezone');
 const ERROR = require('../const/error');
 
 module.exports = (server, authentication) => {
+  server.get('/todoList', authentication({auth: 'SELF'}), (req, res) => {
+    res.status(200).send(req.user.todoList);
+  });
+
   server.get('/todo/load', authentication({auth: 'SELF'}), (req, res) => {
     if (req.query.id) {
       const list = req.user.todoList.filter((todos) => {
@@ -74,7 +78,11 @@ module.exports = (server, authentication) => {
       console.log(e);
       res.status(403).send(ERROR(403));
     }
-  })
+  });
+
+  server.post('/todo/isLogin', authentication({auth: 'SELF'}), (req, res) => {
+    res.status(200).send({ username: req.user.username });
+  });
 
   server.post('/todo/create', authentication({auth: 'SELF'}), async (req, res) => {
     try {
@@ -90,13 +98,14 @@ module.exports = (server, authentication) => {
 
   server.put('/todo/updateTodo', authentication({auth: 'SELF'}), async (req, res) => {
     if (!req.body.todos || !req.body.id || !req.body.title) return res.status(400).send(ERROR(400, 'miss [todos || id || title]'));
-    
+    let cb;
     try{
       const todos = JSON.parse(req.body.todos);
-      if (Object.keys(todos).length === 0) return res.status(400).send(ERROR(400));
-
-      const cb = await api.updateTodos(req.user, req.body.id, req.body.title , todos);
-      
+      if (Object.keys(todos).length === 0) {
+        cb = await api.updateListTitle(req.user, req.body.id, req.body.title , todos);
+      }else {
+        cb = await api.updateTodos(req.user, req.body.id, req.body.title , todos);
+      }
       // if (cb.code !== 200) return res.status(cb.code).send(ERROR(cb.code, cb.msg))
       res.status(200).send({code: 200, data: cb});
     }catch(e) {
