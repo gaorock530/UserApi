@@ -84,28 +84,36 @@ module.exports = (server, authentication) => {
     res.status(200).send({ username: req.user.username });
   });
 
-  server.post('/todo/create', authentication({auth: 'SELF'}), async (req, res) => {
+  server.post('/todo/createList', authentication({auth: 'SELF'}), async (req, res) => {
     try {
-      if (!req.body.title) return res.status(406).send('Miss title');
-      const cb = await api.createList(req.user, req.body.title);
+      if (!req.body.title || !req.body.id) return res.status(406).send('Miss title || id');
+      const cb = await api.createList(req.user, req.body.id, req.body.title);
       res.status(200).send(cb);
     }catch(e){
       console.log(e);
       res.status(400).send(e);
     }
     // res.send(req.body.title);
-  })
+  });
+
+  server.post('/todo/deleteList', authentication({auth: 'SELF'}), async (req, res) => {
+    try {
+      if (!req.body.id) return res.status(406).send('Miss id');
+      const cb = await api.deleteList(req.user, req.body.id);
+      console.log(cb);
+      if (cb.nModified) return res.status(200);
+      res.status(401).send(cb);
+    }catch(e) {
+      res.status(401).send(e);
+    }
+  });
 
   server.put('/todo/updateTodo', authentication({auth: 'SELF'}), async (req, res) => {
     if (!req.body.todos || !req.body.id || !req.body.title) return res.status(400).send(ERROR(400, 'miss [todos || id || title]'));
     let cb;
     try{
       const todos = JSON.parse(req.body.todos);
-      if (Object.keys(todos).length === 0) {
-        cb = await api.updateListTitle(req.user, req.body.id, req.body.title , todos);
-      }else {
-        cb = await api.updateTodos(req.user, req.body.id, req.body.title , todos);
-      }
+      cb = await api.updateTodos(req.user, req.body.id, req.body.title , todos);
       // if (cb.code !== 200) return res.status(cb.code).send(ERROR(cb.code, cb.msg))
       res.status(200).send({code: 200, data: cb});
     }catch(e) {

@@ -100,6 +100,7 @@ async function register (obj, ip, client, expires, authType) {
     // add addintional info
     opts.registerClient = client;
     opts.auth = { level: authType, grade: authLevel(authType) };
+    console.log(opts)
     // register user
     const user = await new Todo(opts).save();
     // get Token
@@ -172,13 +173,26 @@ async function getTodolist (_id, title) {
   }
 }
 
-async function createList (user, title) {
+async function createList (user, id, title) {
   try {
     // const user = await Todo.findById(_id);
-    const list = await user.createList(title);
+    const list = await user.createList(id, title);
     return list
   }catch(e) {
     console.log(e);
+  }
+}
+
+async function deleteList (user, id) {
+  try {
+    const update = await user.update({
+      $pull: { todoList: {id}} //Id = custom ID 
+    });
+    if (update.nModified === 0) return 'no list found';
+    return update;
+  }catch(e) {
+    console.log(e)
+    return e;
   }
 }
 
@@ -193,7 +207,13 @@ async function updateTodos (user, todoId, todoTitle, todos) {
       $pull: { todoList: {id : todoId}} //Id = custom ID 
     });
 
-    if (update.nModified === 0) throw 'Such todo list Not found!';
+    if (update.nModified === 0) {
+      const newList = await createList(user, todoId, todoTitle);
+      // first remove old todolist
+      const update = await user.update({
+        $pull: { todoList: {id : todoId}} //Id = custom ID 
+      });
+    }
     // then push new todo list with old title
     const push = await user.update({
       $push: { todoList: {
@@ -251,5 +271,6 @@ module.exports = {
   checkPassword,
   updateTodos,
   createList,
+  deleteList,
   updateListTitle
 }

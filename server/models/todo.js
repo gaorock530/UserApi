@@ -47,6 +47,7 @@ const schema = new mongoose.Schema({
       title: {type: String},
       todos: [
         {
+          id: {type: String, default: uuid()},
           text: {type: String},
           complete: {type: Boolean, default: false},
           conpletedAt: {type: Date, default: Date.now()},
@@ -64,12 +65,13 @@ const schema = new mongoose.Schema({
   ]
 }); 
 
-schema.methods.createList = function async (title) {
+schema.methods.createList = function async (id, title) {
   const user = this;
   try {
     user.todoList.push({
       title,
-      todos: []
+      todos: [],
+      id
     });
   }catch(e) {
     console.log(e);
